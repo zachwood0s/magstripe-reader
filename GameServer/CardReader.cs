@@ -40,9 +40,17 @@ namespace GameServer
             return true;
         }
 
-        public HidReport Read()
+        public CardData Read()
         {
-            return _SendCommandWait(0xC5, Commands.ESCAPE, Commands.READ);
+            var report = _SendCommandWait(0xC5, Commands.ESCAPE, Commands.READ);
+            return CardData.Create(report);
+        }
+
+        public HidReport Write(CardData data)
+        {
+            var command = new byte[] { 0xC5, Commands.ESCAPE, Commands.WRITE };
+            var report = _SendCommandWait(command.Concat(data.GetWritableData()).ToArray());
+            return report;
         }
 
         private void _SendCommand(params byte[] command)
