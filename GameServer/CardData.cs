@@ -36,9 +36,10 @@ namespace GameServer
             return _bytes;
         }
 
-        public string GetReadableData()
+        public Result<string> GetReadableData()
         {
-            return Encoding.ASCII.GetString(_bytes);
+            var value = Encoding.ASCII.GetString(_bytes);
+            return value.Length == 0 ? Result.Fail<string>("No data found!") : Result.Ok(value);
         }
         
     }

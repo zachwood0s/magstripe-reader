@@ -37,5 +37,77 @@ namespace GameServer
                 noAction();
             }
         }
+
+        public static T PromptYesNo<T>(string question, Func<T> yesFunc, Func<T> noFunc)
+            => PromptYesNo(question) ? yesFunc() : noFunc();
+
+        public static int PromptNumber(string question, int startRange, int endRange)
+            => _PromptNumber(
+                question, 
+                x => x >= startRange && x <= endRange, 
+                $"Number must be between {startRange} and {endRange}");
+
+        public static int PromptNumber(string question) 
+            => _PromptNumber(question, x => true, "HOW THE HELL");
+
+        private static int _PromptNumber(string question, Func<int, bool> condition, string errorMessage)
+        {
+            bool isValid = false;
+            int choice = -1;
+            while (!isValid)
+            {
+                Console.Write($"{question}: ");
+                if (!int.TryParse(Console.ReadLine(), out choice))
+                {
+                    Console.WriteLine("Invalid input! Please enter a number");
+                }
+                else if(!condition(choice))
+                {
+                    Console.WriteLine(errorMessage);
+                }
+                else
+                {
+                    isValid = true;
+                }
+            }
+            return choice;
+        }
+
+
+        public class Menu
+        {
+            private List<(string, Action)> _options;
+            public IReadOnlyList<(string, Action)> Options => _options;
+
+            public Menu()
+            {
+                _options = new List<(string, Action)>();
+            }
+
+            public void AddOption(params (string text, Action action)[] options)
+                => _options.AddRange(options);
+
+            public void DisplayMenu()
+            {
+                Console.WriteLine(_MenuText());
+                var (_, action) = _options[PromptNumber("Choice", 1, _options.Count) - 1];
+                action();
+            }
+
+            private string _MenuText()
+                => string.Join("\n", _options.Enumerate().Select(option => $"{option.index + 1}) {option.value}"));
+                
+        }
+    }
+
+    public static class IEnumerableExtensions
+    {
+        public static IEnumerable<(int index, T value)> Enumerate<T>(this IEnumerable<T> enumerable)
+        {
+            int count = 0;
+            foreach (var value in enumerable) {
+                yield return (count++, value);
+            }
+        }
     }
 }
