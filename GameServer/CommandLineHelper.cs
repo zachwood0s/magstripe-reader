@@ -78,10 +78,13 @@ namespace GameServer
         {
             private List<(string, Action)> _options;
             public IReadOnlyList<(string, Action)> Options => _options;
+            private readonly string _menuName;
+            public bool IsOpen { get; private set; }
 
-            public Menu()
+            public Menu(string name)
             {
                 _options = new List<(string, Action)>();
+                _menuName = name;
             }
 
             public void AddOption(params (string text, Action action)[] options)
@@ -89,13 +92,16 @@ namespace GameServer
 
             public void DisplayMenu()
             {
+                IsOpen = true;
+                Console.WriteLine(_menuName);
                 Console.WriteLine(_MenuText());
                 var (_, action) = _options[PromptNumber("Choice", 1, _options.Count) - 1];
+                IsOpen = false;
                 action();
             }
 
             private string _MenuText()
-                => string.Join("\n", _options.Enumerate().Select(option => $"{option.index + 1}) {option.value}"));
+                => string.Join("\n", _options.Enumerate().Select(option => $"{option.index + 1}) {option.value.Item1}"));
                 
         }
     }

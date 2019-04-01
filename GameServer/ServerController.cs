@@ -54,6 +54,7 @@ namespace GameServer
     {
         private readonly List<string>[] _allStations;
         private readonly Dictionary<string, Station> _stationIds;
+        private readonly CLH.Menu _mainMenu;
         private readonly HashSet<string> _takenStations;
         private readonly List<PlayerCard> _incomingCards;
 
@@ -63,9 +64,18 @@ namespace GameServer
             _takenStations = new HashSet<string>();
             _incomingCards = new List<PlayerCard>();
             _stationIds = new Dictionary<string, Station>();
+            _mainMenu = new CLH.Menu("Main Menu");
+            _mainMenu.AddOption(
+                ("Formatting Mode", _FormattingMode),
+                ("Card Entry", _CardEnterMode));
         }
 
         public void Start()
+        {
+            _mainMenu.DisplayMenu();
+        }
+
+        private void _CardEnterMode()
         {
             using (var reader = new CardReader())
             {
@@ -84,69 +94,92 @@ namespace GameServer
             }
         }
 
+        private void _FormattingMode()
+        {
+            using (var reader = new CardReader())
+            {
+                if (reader.Connect())
+                {
+                    reader.Reset();
+                    int counter = 0;
+                    while (true)
+                    {
+                        _FormatCard(reader);
+                        Console.WriteLine($"Formatted {++counter} cards");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Failed to connect to card reader!");
+                }
+            }
+        }
+
         private void _HandleCardSwipe(CardReader reader)
         {
             bool retry = true;
             while (retry)
             {
-                _ProcessCard(reader)
-                    .OnBoth(result =>
-                    {
-                        if (result.Success)
-                        {
-                            retry = false;
-                        }
-                        else
-                        {
-                            Console.WriteLine("Retrying...");
-                        }
-                    });
+                _ProcessCard(reader).Match(
+                    Ok: () => retry = false,
+                    Err: () => Console.WriteLine("Retrying..."));
             }
             
         }
 
         private Result _ProcessCard(CardReader reader)
         {
+            #region Helper Methods
+            Result<PlayerCard> isValidCard(string data)
+            {
+                var pc = new PlayerCard(data);
+                return pc.IsValid()
+                    ? Result.Ok(pc)
+                    : Result.Fail<PlayerCard>("Card not setup correctly!");
+            }
+
+            Result<PlayerCard> formatCard(Result<PlayerCard> error)
+                => CLH.PromptYesNo($"Error reading card data: {error.Error} Format?",
+                    () => Result.Ok(_FormatCard(reader)),
+                    () => error );
+
             Result<PlayerCard> getExistingCard(PlayerCard card)
                 => _incomingCards.Contains(card)
                     ? Result.Ok(_incomingCards.Find(x => x.Equals(card)))
                     : Result.Fail<PlayerCard>($"No incoming cards with this player ID: {card.PlayerID}");
 
+            Action<PlayerCard> handleExistingCard(PlayerCard currentCard)
+                => existingCard =>
+                {
+                    Console.WriteLine($"Found an incoming card: {existingCard}");
+                    if (existingCard.BaseNumber <= PlayerCard.MAX_BASE_NUMBER)
+                    {
+                        _SendToBase(reader, existingCard);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Reached last base...");
+                        _ChoseCardDestination(reader, currentCard);
+                    }
+                    Console.WriteLine(currentCard);
+                };
+
+            Action<string> handleNewCard(PlayerCard card)
+            => msg =>
+            {
+                Console.WriteLine(msg);
+                _ChoseCardDestination(reader, card);
+            };
+            #endregion Helper Methods
+
             Console.WriteLine("Waiting for card swipe...");
             return reader.Read().GetReadableData()
-                .OnSuccess(data =>
-                {
-                    var pc = new PlayerCard(data);
-                    return pc.IsValid()
-                        ? Result.Ok(pc)
-                        : Result.Fail<PlayerCard>("Card not setup correctly!");
-                })
-                .OnFailure(e =>
-                    CLH.PromptYesNo($"Error reading card data: {e.Error} Format?",
-                        () => Result.Ok(_FormatCard(reader)),
-                        () => e
-                        ))
+                .OnSuccess(isValidCard)
+                .OnFailure(formatCard)
                 .OnSuccess(card =>
                     getExistingCard(card).Match(
-                        Ok: existingCard =>
-                        {
-                            Console.WriteLine($"Found an incoming card: {existingCard}");
-                            if (existingCard.BaseNumber <= PlayerCard.MAX_BASE_NUMBER)
-                            {
-                                _SendToBase(reader, existingCard);
-                            }
-                            else
-                            {
-                                Console.WriteLine("Reached last base...");
-                                _ChoseCardDestination(reader, card);
-                            }
-                            Console.WriteLine(card); 
-                        },
-                        Err: msg =>
-                        {
-                            Console.WriteLine(msg);
-                            _ChoseCardDestination(reader, card);
-                        }));
+                        Ok: handleExistingCard(card),
+                        Err: handleNewCard(card)));
         }
 
         private void _ChoseCardDestination(CardReader reader, PlayerCard card)

@@ -23,24 +23,6 @@ namespace GameServer
             Console.WriteLine("Started server!");
             await t;
             ws.Stop();
-            /*
-            using(var reader = new CardReader())
-            {
-                if (reader.Connect())
-                {
-                    Console.WriteLine($"Read in: {reader.Read().GetReadableData()}");
-                    reader.Write(CardData.Create("1"));
-                    Console.WriteLine($"Read in: {reader.Read().GetReadableData()}"); 
-                    reader.Write(CardData.Create("2"));
-                    Console.WriteLine($"Read in: {reader.Read().GetReadableData()}"); 
-                    reader.Write(CardData.Create("3"));
-                    Console.WriteLine($"Read in: {reader.Read().GetReadableData()}"); 
-                    
-                }
-            }
-            Console.WriteLine("Press any key to continue...");
-            Console.ReadKey(true);
-            */
         }
     }
 }
