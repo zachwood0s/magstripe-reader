@@ -1,6 +1,7 @@
 ﻿using HidLibrary;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -15,6 +16,7 @@ namespace GameServer
         static async Task Main(string[] args)
         {
             var controller = new ServerController();
+            PlayerCard.CurrentPlayerId = GetStartingId();
             Task t = Task.Run(controller.Start);
             
             var ws = new WebSocketServer(8000);
@@ -23,6 +25,29 @@ namespace GameServer
             Console.WriteLine("Started server!");
             await t;
             ws.Stop();
+        }
+
+        public static int GetStartingId()
+        {
+            using (var reader = new StreamReader("config.txt"))
+            {
+                if(int.TryParse(reader.ReadLine(), out var id))
+                {
+                    return id;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+        }
+
+        public static void WriteStartingId(int value)
+        {
+            using (var writer = new StreamWriter("config.txt"))
+            {
+                writer.WriteLine(value);
+            }
         }
     }
 }

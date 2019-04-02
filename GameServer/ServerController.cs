@@ -18,16 +18,23 @@ namespace GameServer
 
         public static PlayerCard Default
         {
-            get =>
-                new PlayerCard()
+            get
+            {
+                int id = CurrentPlayerId;
+                CurrentPlayerId++;
+                Program.WriteStartingId(CurrentPlayerId);
+                return new PlayerCard()
                 {
                     ShipData = new string('0', SHIP_DATA_LENGTH),
-                    PlayerID = CurrentPlayerId++.ToString(),
-                    BaseNumber = 0
+                    PlayerID = string.Format("{0:000}", id),
+                    BaseNumber = 0,
+                    Username = "<unknown>"
                 };
+            }
         }
         public string ShipData { get; set; }
         public string PlayerID { get; set; }
+        public string Username { get; set; }
         public int BaseNumber { get; set; }
 
         private PlayerCard() { }
@@ -36,6 +43,8 @@ namespace GameServer
             BaseNumber = cardInfo[0] - '0';
             ShipData = new string(cardInfo.Skip(BASE_NUMBER_LENGTH).Take(SHIP_DATA_LENGTH).ToArray());
             PlayerID = new string(cardInfo.Skip(SHIP_DATA_LENGTH + BASE_NUMBER_LENGTH).Take(PLAYER_ID_LENGTH).ToArray());
+            int len = SHIP_DATA_LENGTH + BASE_NUMBER_LENGTH + PLAYER_ID_LENGTH;
+            Username = cardInfo.Substring(len, cardInfo.Length - len);
         }
         public override string ToString()
             => $"{BaseNumber}{ShipData}{PlayerID}";
@@ -229,6 +238,9 @@ namespace GameServer
                 case 'S':
                     Console.WriteLine($"Recieved first connect message from: {ID}");
                     _AddStation(ID, int.Parse(message[1].ToString()));
+                    break;
+                case 'H':
+                    Console.WriteLine($"Recieved highscore, {message}");
                     break;
                 default:
                     Console.WriteLine($"Recieved card info from: {ID}, {message}");
