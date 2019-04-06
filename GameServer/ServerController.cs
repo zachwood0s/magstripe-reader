@@ -51,6 +51,10 @@ namespace GameServer
         public override string ToString()
             => $"{BaseNumber}{ShipData}{PlayerID}{Username}";
 
+        public string ToStringNoUser()
+            => $"{BaseNumber}{ShipData}{PlayerID}";
+
+
         public string Printable()
             => $"Base: {BaseNumber + 1}, ShipData: {ShipData}, PlayerId: {PlayerID}, Username: {Username}";
 
@@ -103,7 +107,6 @@ namespace GameServer
 
         public void Start()
         {
-            _highScoreDialog.ShowDialog();
             _mainMenu.DisplayMenu();
         }
 
@@ -253,7 +256,7 @@ namespace GameServer
             {
                 Console.WriteLine($"Sending to base {card.BaseNumber + 1}");
                 Console.WriteLine("Awaiting card write...");
-                reader.Write(CardData.Create(card.ToString()));
+                reader.Write(CardData.Create(card.ToStringNoUser()));
                 var socket = _stationIds[availableStation];
                 socket.SendData(card.ToString());
                 _incomingCards.Remove(card);
